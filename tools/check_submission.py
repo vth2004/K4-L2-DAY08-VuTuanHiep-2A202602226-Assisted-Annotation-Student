@@ -41,7 +41,12 @@ def main() -> int:
             errors.append(str(exc))
         if got is not None and got != n:
             errors.append(f"data/test/labels/{Path(name).stem}.txt có {got} box, bản gốc có {n} box. Không được sửa nhãn của tập kiểm thử")
-        if not label_path.exists() or hashlib.sha256(label_path.read_bytes()).hexdigest() != ref_hashes.get(label_path.name):
+        # Git may materialize tracked text labels with CRLF on Windows while
+        # label_hashes.json was generated from LF bytes.  Normalize only line
+        # endings so the integrity check detects real label edits on both OSes.
+        raw = label_path.read_bytes() if label_path.exists() else b""
+        normalized = raw.replace(b"\r\n", b"\n")
+        if not label_path.exists() or hashlib.sha256(normalized).hexdigest() != ref_hashes.get(label_path.name):
             errors.append(f"data/test/labels/{label_path.name} khác bản phát hành; không sửa nhãn tập kiểm thử")
 
     rounds = sorted(
